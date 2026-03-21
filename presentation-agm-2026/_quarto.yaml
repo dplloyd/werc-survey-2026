@@ -1,0 +1,15 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "WERC Survey"
+
+format:
+  revealjs:
+    theme: simple
+    slide-number: true
+    transition: fade
+
+execute:
+  freeze: auto
