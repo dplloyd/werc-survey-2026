@@ -1,0 +1,483 @@
+---
+title: "WERC Survey: Initial analysis"
+author: "Diarmuid Lloyd"
+format:
+  html:
+    embed-resources: true
+fontsize: 11pt
+geometry: margin=1in
+toc: true
+toc-depth: 2
+highlight-style: tango
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r load-libs}
+library(tidyverse)
+library(janitor)
+library(ggtext)
+library(gt)
+source("functions/werc_plot_theme.R")
+source("functions/table_scripts.R")
+source("00_read_data.R")
+```
+
+
+
+# Introduction
+
+Summary plots and initial insights from:
+
+* Section A: Experience and impact of WERC
+* Section D: The future of WERC
+
+```{r}
+
+survey_meta |> filter(Section == "A" | Section == "D") |> 
+  select(QID, Question) |> 
+  gt::gt()
+```
+
+
+# Reading data
+
+Data were downloaded from Google Drive and saved locally in the `data/` directory.
+
+
+```{r loading-data}
+
+
+survey_df_long <- survey_df |> 
+  pivot_longer(-timestamp,
+    names_to = "QID", values_to = "response") |> 
+  left_join(survey_meta, by = join_by(QID)) |> 
+  janitor::clean_names()
+
+
+werc_palette_6 <- c(
+  "neon_pink"       = "#FF3E96",  # Logo pink
+  "dark_blue"  = "#0B0E3F",  # Logo dark blue
+  "light_pink" = "#FF99C1",  # Lighter accent
+  "medium_blue"= "#1A1F66",  # Medium blue accent
+  "light_gray"       = "#F2F2F2",  # Neutral light gray
+  "dark_gray"  = "#333333"   # Neutral dark gray for text
+)
+
+werc_palette_8 <- c(monochromeR::generate_palette("#FF3E96", 
+                 n_colours = 4, view_palette = FALSE, view_labels = FALSE, modification = "go_both_ways"),
+monochromeR::generate_palette("#1A1F66", 
+                 n_colours = 4, view_palette = FALSE, view_labels = FALSE, modification = "go_both_ways")) 
+
+
+werc_palette_3 <- monochromeR::generate_palette("#FF3E96", blend_colour = "#1A1F66", 
+                 n_colours = 3, view_palette = FALSE, view_labels = FALSE)
+
+werc_palette_7 <- monochromeR::generate_palette("#FF3E96", blend_colour = "#1A1F66", 
+                 n_colours = 7, view_palette = FALSE, view_labels = FALSE)
+
+werc_palette_default <- werc_palette_6["neon_pink"]
+
+
+```
+
+
+# Section A: Experience and impact of WERC
+
+
+## How long have you been a member of WERC?
+
+::: {.panel-tabset}
+
+## Plot
+
+```{r}
+
+survey_df |>
+  ggplot() +
+  geom_bar(aes(x = QA_1), fill = werc_palette_default[[1]]) +
+  theme_werc()
+  
+
+```
+
+## Table
+
+```{r}
+survey_df |>
+ tabyl(QA_1) |>     # counts
+  adorn_pct_formatting(digits = 1) |> 
+  adorn_totals(where = 'row') |> 
+  gt::gt()
+```
+
+
+:::
+
+Two-thirds of respondents have been WERC members for more than 12 months. Of the remainder, 16% have been members between 7-12 months, and 18% up to six months.
+
+::: {.callout-important}
+Is this representative of the membership? 
+:::
+
+## How did you ﬁnd out about WERC? 
+
+::: {.panel-tabset}
+
+## Plot
+
+```{r}
+survey_df |>
+  ggplot() +
+  geom_bar(aes(y = fct_rev(fct_infreq(QA_2))), fill = werc_palette_default[[1]]) +
+  # coord_flip() +
+  theme_werc() +
+  afcharts::theme_af(grid = "x", axis = "y")  +
+  
+  scale_y_discrete(name = "") 
+```
+
+## Table 
+```{r}
+survey_df |> 
+count_column_pc_table(QA_2, sort = "desc")
+
+
+```
+
+:::
+
+Most respondents heard about the club through the internet: 44% from Facebook (44%), or a search engine (16%), with a comparatively small number (2%) through the website (although the latter two categories are likely synonmous).  Around 30% hear about the club through word of mouth, with the remaining 10% from seeing the club in the "real world". These results suggest a strong 
+
+
+
+
+## Is there a link between time in club and how they heard about it?
+
+Have more recent members of the club heard about the club in different ways to longer members? Sample counts are very small for the >12 months category, so we collapse into those in the club over 12 months, and those in the club 12 months or less.
+
+:::{.panel-tabset}
+
+
+## Plot
+
+```{r}
+
+
+survey_df <- survey_df |>
+  mutate(
+    QA_1_bin_time_group = fct_collapse(
+      QA_1,
+      "Over 12 months" = "More than 12 months",
+      "Up to 12 months" = c("0-3 months", "4-6 months", "7-9 months", "9-12 months")
+      
+    ) |>
+      fct_relevel("Over 12 months", "Up to 12 months")
+  )
+
+
+ggplot(survey_df, aes(x = QA_1_bin_time_group, fill = QA_2)) +
+  
+  geom_bar(position = "fill",  colour = "white") +
+  scale_fill_manual(values = unname(werc_palette_8)) +
+  labs(
+    y = "Proportion",
+    x = "Membership Duration",
+    fill = "Awareness Source"
+  ) +
+  theme_werc()
+
+```
+
+
+
+## Table
+
+```{r}
+tab <- table(survey_df$QA_1, survey_df$QA_2)
+
+table_time_comms <- survey_df |> 
+tabyl(QA_2, QA_1,) |> 
+  adorn_totals(where = c("row", "col")) |> 
+  mutate("Up to 12 months (subtotal)" = `0-3 months` + `4-6 months` + `7-9 months` + `9-12 months`, .before = `More than 12 months`) |> 
+  
+  
+  gt::gt() |> 
+  
+    # Title
+  tab_header(
+    title = md("**How members heard about WERC by length of membership**"),
+    subtitle = "Response counts"
+  ) %>%
+  
+    opt_align_table_header(align = "left") |> 
+
+  
+  # Style TOTAL ROW
+  tab_style(
+    style = list(
+      cell_text(weight = "bold"),
+      cell_fill(color = "#f2f2f2")
+    ),
+    locations = cells_body(
+      rows = QA_2 == "Total"
+    )
+  ) |> 
+  
+  tab_style(
+  style = list(
+    cell_text(weight = "bold"),
+    cell_fill(color = "#f2f2f2")
+  ),
+  locations = cells_body(
+    columns = "Total"
+  )
+) |> 
+  
+  # Column alignment
+  cols_align(
+    align = "right",
+    -1  # all except first column
+  ) %>%
+  
+  cols_align(
+    align = "left",
+    columns = 1
+  ) %>%
+  
+
+  # Optional footnote
+  tab_source_note(
+    source_note = "Source: Club Member Survey (2026)"
+  )
+
+table_time_comms
+
+```
+
+:::
+
+There's tentative evidence longer standing members heard about the club through Facebook, but more recent members may have been discovering the club through organic search. This may just reflect that Facebook was the most prominent online presence early in the club's history: Members may have searched for the club via Google, with the only discoverable channel being Facebook at that time. Recall bias would mean this was answered as "Facebook" when in fact "Google" is what acted as the discovery vector. 
+
+Word of mouth is broadly the same proportionally between older and newer members.
+
+We should be very wary of small sample numbers here however, and can bin the results further into broad categories of "internet", " in real world (IRL)" and "word of mouth".
+
+
+::: {.callout-important}
+Among newer members, is the higher proportion of hearing about WERC via the website reflective of the time the website has been online?
+:::
+
+
+:::{.panel-tabset}
+
+## Plot
+
+```{r}
+
+survey_df <- survey_df %>%
+  mutate(
+    QA_2_collapsed_awareness_group = fct_collapse(
+      QA_2,
+      "Spotted IRL" = c(
+        "Seeing the club in park",
+        "Seeing someone in club merch",
+        "Race event"
+      ),
+      "Digital" = c(
+        "Facebook",
+        "Club website",
+        "Google/other search engine"
+      ),
+      "Word of mouth" = "Word of mouth"
+    )
+  )
+
+fig_duration_against_awareness_route_binned <- ggplot(survey_df, aes(x = QA_1_bin_time_group, fill = QA_2_collapsed_awareness_group)) +
+  geom_bar(position = "fill", colour = "white") +
+  scale_fill_manual(values = werc_palette_3) +
+  labs(
+    y = "Proportion",
+    x = "Membership Duration",
+    fill = "Awareness Source"
+  ) +
+  
+ scale_y_continuous(labels = scales::percent ) +
+  theme_werc()
+
+fig_duration_against_awareness_route_binned
+
+ggsave("figures/fig_duration_against_awareness_route_binned.png", width = 10)
+
+tab3 <- table(survey_df$QA_1_bin_time_group, survey_df$QA_2_collapsed_awareness_group)
+chisq.test(tab3)
+chisq.test(tab3)$expected
+
+```
+
+## Table 
+
+```{r}
+survey_df |> 
+tabyl(QA_1_bin_time_group, QA_2_collapsed_awareness_group) |> 
+  adorn_totals(where = c("row", "col")) |> 
+  gt()
+  
+```
+
+
+
+:::
+
+
+After grouping awareness routes into broader categories (Real-world, Digital, Word of mouth), there was no statistically significant association between awareness route and length of membership (χ²(2) = 3.34, p = .19). This suggests that recruitment pathways appear broadly similar across newer and longer-standing members. 
+
+
+## What have you enjoyed about being a member? 
+
+This question was an open-ended response, and requires recoding into categories. From a scan of the responses, the coding framework is:
+
+1. Community
+2. Coaching
+3. Fitness improvement
+4. Structured sessions
+5  Stretch-environment
+6. Locality
+7. Culture
+
+The open ended responses mean that responses can fall into multiple categories, as often respondents listed multiple things they enjoyed about the club.
+
+We can use a local LLM (so not sending responses to a Google server or similar) to sift through the text, and assign the responses to one of these categories, and multiple ones.
+
+### Using ellmer to analyse the text
+
+I've been trialling using local LLMs, and ellmer provides a really nice interface for this. So, let's give it a bash. This [article](https://www.mjandrews.org/notes/text_analysis_with_llms/part2.html) has a good summary
+
+We first provide the system prompt.
+
+:::{.panel-tabset}
+
+## Code
+
+```{r ellmer-system-prompt}
+#| echo: true
+
+library(ellmer)
+system_prompt <- readLines("prompt-club-enjoyment-categorisation.md")
+
+
+```
+
+## System prompt text
+
+```{r}
+cat(system_prompt, sep = "\n")
+```
+
+:::
+
+
+We now pass this to our LLM (Ollama). Please note, this code-chunk is not evaluated on Render due to the time it takes to process (RIP my Mac). Instead, I've run the same code below in a separate script, and instead, we read the outputs of that.
+
+
+```{r}
+#| eval: false
+#| echo: true
+
+client <- chat_ollama(model = "gemma3:4b", system_prompt = system_prompt)
+
+
+input_prompts <- as.list(survey_df$QA_3)
+
+chat_output <- parallel_chat_structured(
+  chat = client,
+  on_error = "return",
+  prompts = input_prompts,
+  type = type_object(category = type_number(), reasoning = type_string())
+)
+
+
+```
+
+
+
+
+
+# Section D: Future of WERC
+
+
+## QD_2: Travelling to a session
+
+The vast majority (86%) of respondents are content to travel up to at least 0.5 miles from Saughton Park. 55% are content to travel up to two miles, and 32% content to travel more than two miles. It should be said that the question phrasing means respondents are citing their upper limit, rather than 
+
+:::{.panel-tabset}
+
+## Plot
+
+```{r}
+
+survey_df |>
+  ggplot() +
+  geom_bar(aes(y = QD_2), fill = werc_palette_default[[1]]) +
+  theme_werc() +
+  afcharts::theme_af(grid = "x", axis = "y")  +
+  scale_y_discrete(name = "") 
+
+```
+
+## Table
+
+```{r}
+
+survey_df |> 
+count_column_pc_table(QD_2)
+
+
+```
+
+:::
+
+### Map
+
+We can visualise this on a map. 
+
+
+```{r}
+library(sf)
+library(maptiles)
+library(ggmap)
+
+[-3.280770, 55.918829, -3.220469, 55.944907]
+
+bbox_saughton <- c(
+  left   = -3.280770,
+  bottom = 55.918829,
+  right  = -3.220469,
+  top    = 55.944907
+)
+
+zoom <- 14
+
+werc_location <- tibble(location = "WERC", lon = 55.9356845, lat = -3.2478984)
+
+distance_data <- tibble(
+  radius_km  = c(2, 5, 10),
+  proportion = c(0.25, 0.45, 0.30)
+)
+
+
+
+get_stadiamap(bbox_saughton, zoom = 14, maptype = "stamen_terrain_lines") |> 
+  ggmap() +
+  geom_point(data = werc_location, aes(x = lat, y = lon ), colour = werc_palette_3[1]) +
+  
+  theme_minimal()
+
+```
+
+
+
+
+
