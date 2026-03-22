@@ -1,0 +1,25 @@
+$navy: #0B0F4A;
+$pink: #E83E8C;
+
+/* All slides */
+.reveal .slides section {
+  background-color: white;
+}
+
+/* Slide titles */
+.reveal h1,
+.reveal h2,
+.reveal h3 {
+  color: $navy;
+}
+
+/* Title slide */
+.reveal .title-slide {
+  background-color: $navy;
+  color: white;
+}
+
+/* Progress bar */
+.reveal .progress span {
+  background: $pink;
+}
