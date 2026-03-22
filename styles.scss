@@ -6,20 +6,41 @@ $pink: #E83E8C;
   background-color: white;
 }
 
+/* Title slide styling */
+.title {
+  font-size: 100px ;
+  color: $pink ;
+}
+
 /* Slide titles */
 .reveal h1,
 .reveal h2,
 .reveal h3 {
   color: $navy;
+  font-family: "Poppins", sans-serif;
+
 }
 
 /* Title slide */
 .reveal .title-slide {
   background-color: $navy;
-  color: white;
+  color: #E83E8C;
+  font-family: "Poppins", sans-serif;
+
 }
+
+
 
 /* Progress bar */
 .reveal .progress span {
-  background: $pink;
+  background: $navy;
 }
+
+
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Rye&display=swap');
+
+/* Reveal.js font variables */
+$font-family-sans-serif: "Poppins", sans-serif;
+$presentation-heading-font: "Poppins", sans-serif;
+
+
